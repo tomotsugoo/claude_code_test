@@ -255,10 +255,10 @@
 let cookies = 0, totalCookies = 0, clickPower = 1;
 
 const upgrades = [
-  { id:'u1', name:'ゴールデンフィンガー', desc:'クリック+4',    cost:100,  bought:false, apply:()=>{ clickPower+=4; } },
-  { id:'u2', name:'サクサクの指',         desc:'クリック+20',   cost:500,  bought:false, apply:()=>{ clickPower+=20; } },
-  { id:'u3', name:'ダイヤの爪',           desc:'クリック×2',    cost:2000, bought:false, apply:()=>{ clickPower*=2; } },
-  { id:'u4', name:'タイムワープ',         desc:'全施設CPS×2',   cost:5000, bought:false, apply:()=>{ buildings.forEach(b=>b.cps*=2); } },
+  { id:'u1', name:'ゴールデンフィンガー', desc:'クリック+4',    cost:20,   bought:false, apply:()=>{ clickPower+=4; } },
+  { id:'u2', name:'サクサクの指',         desc:'クリック+20',   cost:150,  bought:false, apply:()=>{ clickPower+=20; } },
+  { id:'u3', name:'ダイヤの爪',           desc:'クリック×2',    cost:800,  bought:false, apply:()=>{ clickPower*=2; } },
+  { id:'u4', name:'タイムワープ',         desc:'全施設CPS×2',   cost:3000, bought:false, apply:()=>{ buildings.forEach(b=>b.cps*=2); } },
 ];
 
 const buildings = [
@@ -473,7 +473,8 @@ function renderUpgrades(){
     const btn=document.createElement('button');
     btn.className='upgrade-btn';
     btn.disabled=cookies<u.cost;
-    btn.innerHTML=`<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div></div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
+    btn.dataset.cost = u.cost;
+    btn.innerHTML=`<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div><div class="need-hint" style="font-size:0.7rem;color:#f87171">${cookies < u.cost ? `あと🍪${fmt(u.cost-cookies)}` : ''}</div></div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
     btn.onclick=()=>{
       if(cookies>=u.cost){ cookies-=u.cost; u.bought=true; u.apply(); claudeReact('buy'); render(); }
     };
@@ -489,6 +490,7 @@ function renderBuildings(){
     const cost=buildingCost(b);
     const btn=document.createElement('button');
     btn.className='building-btn';
+    btn.dataset.id=b.id;
     btn.disabled=cookies<cost;
     btn.innerHTML=`
       <div class="building-header">
@@ -527,6 +529,35 @@ function render(){
   renderMilestones();
 }
 
+// ボタンのdisabled状態とコスト表示だけ更新（DOMを破壊しない）
+function updateButtonStates(){
+  renderScore();
+  renderMilestones();
+
+  // アップグレードボタン
+  document.querySelectorAll('#upgrades .upgrade-btn').forEach(btn=>{
+    const cost = parseInt(btn.dataset.cost);
+    const wasDisabled = btn.disabled;
+    btn.disabled = cookies < cost;
+    // 「あとX枚」ヒントを更新
+    const hint = btn.querySelector('.need-hint');
+    if(hint){
+      hint.textContent = cookies < cost ? `あと🍪${fmt(cost - cookies)}` : '';
+    }
+  });
+
+  // 施設ボタン
+  document.querySelectorAll('#buildings .building-btn').forEach(btn=>{
+    const id = btn.dataset.id;
+    const b = buildings.find(x=>x.id===id);
+    if(!b) return;
+    const cost = buildingCost(b);
+    btn.disabled = cookies < cost;
+    const costEl = btn.querySelector('.building-cost');
+    if(costEl) costEl.textContent = `🍪${fmt(cost)}`;
+  });
+}
+
 // ══════════════════════════════════════
 //  Click handler
 // ══════════════════════════════════════
@@ -553,7 +584,7 @@ setInterval(()=>{
   const gain=totalCPS()/20;
   cookies      += gain;
   totalCookies += gain;
-  render();
+  updateButtonStates(); // DOMを破壊せずスコアとボタン状態だけ更新
 }, 50);
 </script>
 </body>
