@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クッキークリッカー</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a0a2e;
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Left panel */
+    #left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    #score-display {
+      font-size: 1.4rem;
+      margin-bottom: 0.3rem;
+      color: #f9c74f;
+    }
+
+    #cps-display {
+      font-size: 0.95rem;
+      color: #aaa;
+      margin-bottom: 2rem;
+    }
+
+    #cookie-btn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: radial-gradient(circle at 35% 35%, #f4a261, #e76f51);
+      font-size: 5rem;
+      box-shadow: 0 0 30px #e76f5188;
+      transition: transform 0.07s, box-shadow 0.07s;
+      user-select: none;
+    }
+
+    #cookie-btn:active {
+      transform: scale(0.93);
+      box-shadow: 0 0 10px #e76f5188;
+    }
+
+    #click-power {
+      margin-top: 1.2rem;
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+
+    /* Right panel */
+    #right {
+      width: 320px;
+      background: #12082a;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+    }
+
+    #right h2 {
+      font-size: 1rem;
+      color: #f9c74f;
+      border-bottom: 1px solid #333;
+      padding-bottom: 0.5rem;
+    }
+
+    /* Upgrades */
+    .upgrade-btn {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1f0f3a;
+      color: #ddd;
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.85rem;
+      transition: background 0.15s, border-color 0.15s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .upgrade-btn:not(:disabled):hover {
+      background: #2e1a52;
+      border-color: #f9c74f;
+    }
+
+    .upgrade-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .upgrade-btn .upg-name { font-weight: bold; color: #fff; }
+    .upgrade-btn .upg-desc { font-size: 0.75rem; color: #aaa; margin-top: 2px; }
+    .upgrade-btn .upg-cost { color: #f9c74f; font-weight: bold; white-space: nowrap; margin-left: 0.5rem; }
+
+    /* Buildings */
+    .building-btn {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a0a2e;
+      color: #ddd;
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.85rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .building-btn:not(:disabled):hover {
+      background: #2e1a52;
+      border-color: #90e0ef;
+    }
+
+    .building-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .building-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .building-name { font-weight: bold; color: #90e0ef; }
+    .building-owned { background: #0d2137; border-radius: 4px; padding: 1px 8px; font-size: 0.85rem; }
+    .building-cost { color: #f9c74f; font-weight: bold; }
+    .building-desc { font-size: 0.75rem; color: #aaa; margin-top: 2px; }
+
+    /* Floating text */
+    .float-text {
+      position: fixed;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #f9c74f;
+      pointer-events: none;
+      animation: floatUp 0.9s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-60px); }
+    }
+
+    #milestones {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+
+    #milestones span {
+      display: block;
+      padding: 3px 0;
+      border-bottom: 1px solid #1e1030;
+    }
+  </style>
+</head>
+<body>
+
+<div id="left">
+  <div id="score-display">🍪 0 クッキー</div>
+  <div id="cps-display">毎秒 0 クッキー</div>
+  <button id="cookie-btn" title="クリック！">🍪</button>
+  <div id="click-power">クリック: +1</div>
+</div>
+
+<div id="right">
+  <h2>⬆️ アップグレード</h2>
+  <div id="upgrades"></div>
+
+  <h2>🏗️ 施設</h2>
+  <div id="buildings"></div>
+
+  <h2>🏆 実績</h2>
+  <div id="milestones"></div>
+</div>
+
+<script>
+  // --- State ---
+  let cookies = 0;
+  let totalCookies = 0;
+  let clickPower = 1;
+
+  const upgrades = [
+    { id: 'u1', name: 'ゴールデンフィンガー', desc: 'クリック+4', cost: 100,  bought: false, apply: () => { clickPower += 4; } },
+    { id: 'u2', name: 'サクサクの指',         desc: 'クリック+20', cost: 500,  bought: false, apply: () => { clickPower += 20; } },
+    { id: 'u3', name: 'ダイヤの爪',            desc: 'クリック×2', cost: 2000, bought: false, apply: () => { clickPower *= 2; } },
+    { id: 'u4', name: 'タイムワープ',          desc: '全施設CPS×2', cost: 5000, bought: false, apply: () => { buildings.forEach(b => b.cps *= 2); } },
+  ];
+
+  const buildings = [
+    { id: 'b1', name: '🏠 自動クリッカー', desc: '毎秒 0.1 クッキー', baseCost: 15,  cps: 0.1,  owned: 0 },
+    { id: 'b2', name: '🏭 ベーカリー',     desc: '毎秒 0.5 クッキー', baseCost: 80,  cps: 0.5,  owned: 0 },
+    { id: 'b3', name: '🏦 クッキー銀行',   desc: '毎秒 2 クッキー',   baseCost: 300, cps: 2,    owned: 0 },
+    { id: 'b4', name: '🚀 宇宙工場',       desc: '毎秒 10 クッキー',  baseCost: 1200,cps: 10,   owned: 0 },
+    { id: 'b5', name: '⏳ 時空炉',         desc: '毎秒 50 クッキー',  baseCost: 5000,cps: 50,   owned: 0 },
+  ];
+
+  const milestoneList = [
+    { label: '🍪 初めてのクッキー',    target: 1 },
+    { label: '🎉 100クッキー達成',     target: 100 },
+    { label: '✨ 1,000クッキー達成',   target: 1000 },
+    { label: '💎 10,000クッキー達成',  target: 10000 },
+    { label: '🚀 100,000クッキー達成', target: 100000 },
+  ];
+  const achieved = new Set();
+
+  // --- Helpers ---
+  function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + ' 億';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + ' 百万';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + ' 千';
+    return Math.floor(n).toLocaleString();
+  }
+
+  function buildingCost(b) {
+    return Math.ceil(b.baseCost * Math.pow(1.15, b.owned));
+  }
+
+  function totalCPS() {
+    return buildings.reduce((s, b) => s + b.cps * b.owned, 0);
+  }
+
+  // --- Render ---
+  function renderScore() {
+    document.getElementById('score-display').textContent = `🍪 ${fmt(cookies)} クッキー`;
+    document.getElementById('cps-display').textContent = `毎秒 ${totalCPS().toFixed(1)} クッキー`;
+    document.getElementById('click-power').textContent = `クリック: +${fmt(clickPower)}`;
+  }
+
+  function renderUpgrades() {
+    const el = document.getElementById('upgrades');
+    el.innerHTML = '';
+    upgrades.filter(u => !u.bought).forEach(u => {
+      const btn = document.createElement('button');
+      btn.className = 'upgrade-btn';
+      btn.disabled = cookies < u.cost;
+      btn.innerHTML = `<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div></div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
+      btn.onclick = () => {
+        if (cookies >= u.cost) {
+          cookies -= u.cost;
+          u.bought = true;
+          u.apply();
+          render();
+        }
+      };
+      el.appendChild(btn);
+    });
+    if (upgrades.every(u => u.bought)) el.innerHTML = '<p style="color:#aaa;font-size:0.85rem">全アップグレード購入済み！</p>';
+  }
+
+  function renderBuildings() {
+    const el = document.getElementById('buildings');
+    el.innerHTML = '';
+    buildings.forEach(b => {
+      const cost = buildingCost(b);
+      const btn = document.createElement('button');
+      btn.className = 'building-btn';
+      btn.disabled = cookies < cost;
+      btn.innerHTML = `
+        <div class="building-header">
+          <span class="building-name">${b.name}</span>
+          <span class="building-owned">${b.owned}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="building-desc">${b.desc}</span>
+          <span class="building-cost">🍪${fmt(cost)}</span>
+        </div>`;
+      btn.onclick = () => {
+        const c = buildingCost(b);
+        if (cookies >= c) {
+          cookies -= c;
+          b.owned++;
+          render();
+        }
+      };
+      el.appendChild(btn);
+    });
+  }
+
+  function renderMilestones() {
+    const el = document.getElementById('milestones');
+    milestoneList.forEach(m => {
+      if (totalCookies >= m.target && !achieved.has(m.target)) {
+        achieved.add(m.target);
+        const s = document.createElement('span');
+        s.textContent = m.label;
+        el.prepend(s);
+      }
+    });
+  }
+
+  function render() {
+    renderScore();
+    renderUpgrades();
+    renderBuildings();
+    renderMilestones();
+  }
+
+  // --- Click ---
+  document.getElementById('cookie-btn').addEventListener('click', (e) => {
+    cookies += clickPower;
+    totalCookies += clickPower;
+
+    // Floating text
+    const ft = document.createElement('div');
+    ft.className = 'float-text';
+    ft.textContent = `+${fmt(clickPower)}`;
+    ft.style.left = (e.clientX - 20) + 'px';
+    ft.style.top  = (e.clientY - 10) + 'px';
+    document.body.appendChild(ft);
+    setTimeout(() => ft.remove(), 900);
+
+    render();
+  });
+
+  // --- Auto production ---
+  setInterval(() => {
+    const gain = totalCPS() / 20;
+    cookies += gain;
+    totalCookies += gain;
+    render();
+  }, 50);
+
+</script>
+</body>
+</html>
