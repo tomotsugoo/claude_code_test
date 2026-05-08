@@ -255,10 +255,10 @@
 let cookies = 0, totalCookies = 0, clickPower = 1;
 
 const upgrades = [
-  { id:'u1', name:'ゴールデンフィンガー', desc:'クリック+4',    cost:100,  bought:false, apply:()=>{ clickPower+=4; } },
-  { id:'u2', name:'サクサクの指',         desc:'クリック+20',   cost:500,  bought:false, apply:()=>{ clickPower+=20; } },
-  { id:'u3', name:'ダイヤの爪',           desc:'クリック×2',    cost:2000, bought:false, apply:()=>{ clickPower*=2; } },
-  { id:'u4', name:'タイムワープ',         desc:'全施設CPS×2',   cost:5000, bought:false, apply:()=>{ buildings.forEach(b=>b.cps*=2); } },
+  { id:'u1', name:'ゴールデンフィンガー', desc:'クリック+4',    cost:20,   bought:false, apply:()=>{ clickPower+=4; } },
+  { id:'u2', name:'サクサクの指',         desc:'クリック+20',   cost:150,  bought:false, apply:()=>{ clickPower+=20; } },
+  { id:'u3', name:'ダイヤの爪',           desc:'クリック×2',    cost:800,  bought:false, apply:()=>{ clickPower*=2; } },
+  { id:'u4', name:'タイムワープ',         desc:'全施設CPS×2',   cost:3000, bought:false, apply:()=>{ buildings.forEach(b=>b.cps*=2); } },
 ];
 
 const buildings = [
@@ -473,7 +473,8 @@ function renderUpgrades(){
     const btn=document.createElement('button');
     btn.className='upgrade-btn';
     btn.disabled=cookies<u.cost;
-    btn.innerHTML=`<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div></div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
+    const need = cookies < u.cost ? `<div style="font-size:0.7rem;color:#f87171">あと🍪${fmt(u.cost-cookies)}</div>` : '';
+    btn.innerHTML=`<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div>${need}</div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
     btn.onclick=()=>{
       if(cookies>=u.cost){ cookies-=u.cost; u.bought=true; u.apply(); claudeReact('buy'); render(); }
     };
