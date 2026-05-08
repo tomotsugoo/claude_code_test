@@ -103,7 +103,7 @@
     /* Speech bubble */
     #bubble {
       position: absolute;
-      bottom: 96px; left: 50%;
+      bottom: 94px; left: 50%;
       transform: translateX(-50%);
       background: #fff; color: #222;
       border-radius: 10px; padding: 5px 9px;
@@ -126,8 +126,9 @@
 
     /* SVG Claude */
     #claude-svg {
-      width: 80px; height: 80px;
-      filter: drop-shadow(0 4px 12px #cf7c3a88);
+      width: 80px; height: 88px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 4px 8px #00000066);
     }
 
     /* Animations */
@@ -184,41 +185,66 @@
 <!-- ── Claude character ── -->
 <div id="claude-wrap">
   <div id="bubble"></div>
-  <svg id="claude-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <!-- Body -->
-    <ellipse cx="40" cy="52" rx="22" ry="20" fill="#CF7C3A"/>
-    <!-- Head -->
-    <circle cx="40" cy="30" r="20" fill="#E8954A"/>
-    <!-- Ears -->
-    <circle cx="20" cy="29" r="5" fill="#E8954A"/>
-    <circle cx="60" cy="29" r="5" fill="#E8954A"/>
-    <!-- Eyes (neutral) -->
+  <!--
+    Pixel grid: each rect = 1 unit (8px), viewBox 10×11
+    Layout (row by row):
+      Row0:        ██░░██░░██
+      Row1:  ██░░██████████░░██
+      Row2:  ██░░██████████░░██
+      Row3:  ██░░██████████░░██
+      Row4:        ██████████
+      Row5:        ██░░██░░██   ← eyes
+      Row6:        ██████████
+      Row7:  ██░░░░██░░░░██░░░░██  ← tentacles
+      Row8:  ██░░░░██░░░░██░░░░██
+      Row9:  ██░░░░██░░░░██░░░░██
+      (gap)
+     Row10:  ██░░░░██░░░░██░░░░██
+  -->
+  <svg id="claude-svg" viewBox="0 0 10 11" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <defs>
+      <rect id="p" width="1" height="1"/>
+    </defs>
+
+    <!-- Body (orange) -->
+    <!-- Row 0: col 2-3, 6-7 (shoulders) -->
+    <rect x="2" y="0" width="2" height="1" fill="#D4692A"/>
+    <rect x="6" y="0" width="2" height="1" fill="#D4692A"/>
+    <!-- Row 1: col 0-1 arm, 2-7 body, 8-9 arm -->
+    <rect x="0" y="1" width="2" height="3" fill="#D4692A"/>
+    <rect x="2" y="1" width="6" height="6" fill="#D4692A"/>
+    <rect x="8" y="1" width="2" height="3" fill="#D4692A"/>
+
+    <!-- Eyes (dark) — neutral -->
     <g id="eyes-neutral">
-      <ellipse cx="33" cy="28" rx="5" ry="6" fill="#fff"/>
-      <ellipse cx="47" cy="28" rx="5" ry="6" fill="#fff"/>
-      <circle id="pupil-l" cx="33" cy="29" r="3" fill="#2a1500"/>
-      <circle id="pupil-r" cx="47" cy="29" r="3" fill="#2a1500"/>
-      <circle cx="34" cy="27.5" r="1" fill="#fff"/>
-      <circle cx="48" cy="27.5" r="1" fill="#fff"/>
+      <rect x="3" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="6" y="5" width="1" height="1" fill="#1a0a00"/>
     </g>
-    <!-- Eyes (happy) – hidden by default -->
+    <!-- Eyes happy (^ shape) — hidden -->
     <g id="eyes-happy" display="none">
-      <path d="M28 27 Q33 22 38 27" stroke="#2a1500" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M42 27 Q47 22 52 27" stroke="#2a1500" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <rect x="2" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="4" y="4" width="1" height="1" fill="#1a0a00"/>
+      <rect x="5" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="7" y="4" width="1" height="1" fill="#1a0a00"/>
     </g>
-    <!-- Mouth -->
-    <path id="mouth" d="M33 37 Q40 42 47 37" stroke="#2a1500" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <!-- Blush -->
-    <ellipse id="blush-l" cx="25" cy="36" rx="5" ry="3" fill="#f4845f" opacity="0"/>
-    <ellipse id="blush-r" cx="55" cy="36" rx="5" ry="3" fill="#f4845f" opacity="0"/>
-    <!-- Arms -->
-    <ellipse id="arm-l" cx="16" cy="50" rx="5" ry="9" fill="#CF7C3A" transform="rotate(-15 16 50)"/>
-    <ellipse id="arm-r" cx="64" cy="50" rx="5" ry="9" fill="#CF7C3A" transform="rotate(15 64 50)"/>
-    <!-- Belly highlight -->
-    <ellipse cx="40" cy="54" rx="10" ry="8" fill="#E8954A" opacity="0.4"/>
-    <!-- Antenna -->
-    <line x1="40" y1="10" x2="40" y2="3" stroke="#E8954A" stroke-width="2"/>
-    <circle id="antenna-tip" cx="40" cy="3" r="3" fill="#f9c74f"/>
+
+    <!-- Blush (pink, hidden by default) -->
+    <rect id="blush-l" x="2" y="6" width="1" height="1" fill="#f4845f" opacity="0"/>
+    <rect id="blush-r" x="7" y="6" width="1" height="1" fill="#f4845f" opacity="0"/>
+
+    <!-- Tentacles (3 pairs: col 0-1, 4-5, 8-9) -->
+    <!-- left tentacle -->
+    <rect x="1" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="1" y="10" width="1" height="1" fill="#D4692A"/>
+    <!-- mid tentacle -->
+    <rect x="4" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="5" y="10" width="1" height="1" fill="#D4692A"/>
+    <!-- right tentacle -->
+    <rect x="7" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="7" y="10" width="1" height="1" fill="#D4692A"/>
+
+    <!-- Highlight (lighter patch on upper-body) -->
+    <rect x="3" y="2" width="4" height="2" fill="#E8834A" opacity="0.5"/>
   </svg>
 </div>
 
@@ -302,35 +328,26 @@ function showBubble(text, duration=1600){
 }
 
 function setEmotion(type){
-  // type: neutral | happy | excited
   const neutral = document.getElementById('eyes-neutral');
   const happy   = document.getElementById('eyes-happy');
   const blushL  = document.getElementById('blush-l');
   const blushR  = document.getElementById('blush-r');
-  const mouth   = document.getElementById('mouth');
-  const tip     = document.getElementById('antenna-tip');
 
   if(type==='happy'){
     neutral.setAttribute('display','none');
     happy.setAttribute('display','');
-    blushL.setAttribute('opacity','0.7');
-    blushR.setAttribute('opacity','0.7');
-    mouth.setAttribute('d','M30 36 Q40 45 50 36');
-    tip.setAttribute('fill','#ff6b35');
+    blushL.setAttribute('opacity','0.8');
+    blushR.setAttribute('opacity','0.8');
   } else if(type==='excited'){
     neutral.setAttribute('display','none');
     happy.setAttribute('display','');
     blushL.setAttribute('opacity','1');
     blushR.setAttribute('opacity','1');
-    mouth.setAttribute('d','M28 35 Q40 47 52 35');
-    tip.setAttribute('fill','#ff3535');
   } else {
     neutral.setAttribute('display','');
     happy.setAttribute('display','none');
     blushL.setAttribute('opacity','0');
     blushR.setAttribute('opacity','0');
-    mouth.setAttribute('d','M33 37 Q40 42 47 37');
-    tip.setAttribute('fill','#f9c74f');
   }
 }
 
