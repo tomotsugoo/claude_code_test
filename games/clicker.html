@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude クッキークリッカー</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a0a2e;
+      color: #fff;
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    #left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    #score-display { font-size: 1.4rem; margin-bottom: 0.3rem; color: #f9c74f; }
+    #cps-display   { font-size: 0.95rem; color: #aaa; margin-bottom: 2rem; }
+
+    #cookie-btn {
+      width: 170px; height: 170px;
+      border-radius: 50%; border: none; cursor: pointer;
+      background: radial-gradient(circle at 35% 35%, #f4a261, #e76f51);
+      font-size: 4.5rem;
+      box-shadow: 0 0 30px #e76f5188;
+      transition: transform 0.07s, box-shadow 0.07s;
+      user-select: none; position: relative; z-index: 1;
+    }
+    #cookie-btn:active { transform: scale(0.93); box-shadow: 0 0 10px #e76f5188; }
+
+    #click-power { margin-top: 1rem; font-size: 0.9rem; color: #ccc; }
+
+    /* ── Right panel ── */
+    #right {
+      width: 300px; background: #12082a;
+      padding: 1.2rem; display: flex;
+      flex-direction: column; gap: 0.9rem;
+      overflow-y: auto; z-index: 1;
+    }
+    #right h2 { font-size: 0.95rem; color: #f9c74f; border-bottom: 1px solid #333; padding-bottom: 0.4rem; }
+
+    .upgrade-btn, .building-btn {
+      width: 100%; padding: 0.55rem 0.8rem;
+      border: 1px solid #333; border-radius: 8px;
+      background: #1f0f3a; color: #ddd;
+      cursor: pointer; text-align: left; font-size: 0.82rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .upgrade-btn { display: flex; justify-content: space-between; align-items: center; }
+    .upgrade-btn:not(:disabled):hover, .building-btn:not(:disabled):hover {
+      background: #2e1a52; border-color: #f9c74f;
+    }
+    .upgrade-btn:disabled, .building-btn:disabled { opacity: 0.35; cursor: default; }
+    .upg-name { font-weight: bold; color: #fff; }
+    .upg-desc { font-size: 0.73rem; color: #aaa; margin-top: 2px; }
+    .upg-cost { color: #f9c74f; font-weight: bold; white-space: nowrap; margin-left: 0.5rem; }
+    .building-header { display: flex; justify-content: space-between; align-items: center; }
+    .building-name { font-weight: bold; color: #90e0ef; }
+    .building-owned { background: #0d2137; border-radius: 4px; padding: 1px 8px; font-size: 0.82rem; }
+    .building-cost { color: #f9c74f; font-weight: bold; }
+    .building-desc { font-size: 0.73rem; color: #aaa; margin-top: 2px; }
+
+    /* ── Floating text ── */
+    .float-text {
+      position: fixed; font-size: 1rem; font-weight: bold;
+      color: #f9c74f; pointer-events: none;
+      animation: floatUp 0.9s ease-out forwards;
+      z-index: 100;
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-55px); }
+    }
+
+    /* ── Milestones ── */
+    #milestones { font-size: 0.78rem; color: #aaa; }
+    #milestones span { display: block; padding: 3px 0; border-bottom: 1px solid #1e1030; }
+
+    /* ════════════════════════════════
+       Claude Character
+    ════════════════════════════════ */
+    #claude-wrap {
+      position: fixed;
+      width: 80px; height: 90px;
+      z-index: 200;
+      pointer-events: none;
+      transition: left 0.4s linear, top 0.4s linear;
+    }
+
+    /* Speech bubble */
+    #bubble {
+      position: absolute;
+      bottom: 94px; left: 50%;
+      transform: translateX(-50%);
+      background: #fff; color: #222;
+      border-radius: 10px; padding: 5px 9px;
+      font-size: 0.7rem; white-space: nowrap;
+      box-shadow: 0 2px 8px #0005;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    #bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -7px; left: 50%;
+      transform: translateX(-50%);
+      border: 7px solid transparent;
+      border-top-color: #fff;
+      border-bottom: none;
+    }
+    #bubble.show { opacity: 1; }
+
+    /* SVG Claude */
+    #claude-svg {
+      width: 80px; height: 88px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 4px 8px #00000066);
+    }
+
+    /* Animations */
+    @keyframes walk {
+      0%,100% { transform: rotate(-4deg) translateY(0); }
+      50%      { transform: rotate(4deg) translateY(-4px); }
+    }
+    @keyframes jump {
+      0%,100% { transform: translateY(0) scale(1); }
+      40%     { transform: translateY(-22px) scale(1.05); }
+      70%     { transform: translateY(-8px) scale(1); }
+    }
+    @keyframes cheer {
+      0%,100% { transform: rotate(0deg) scale(1); }
+      25%     { transform: rotate(-10deg) scale(1.1); }
+      75%     { transform: rotate(10deg) scale(1.1); }
+    }
+    @keyframes spin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes idle {
+      0%,100% { transform: translateY(0); }
+      50%     { transform: translateY(-3px); }
+    }
+
+    .anim-walk  { animation: walk  0.5s infinite; }
+    .anim-jump  { animation: jump  0.5s ease; }
+    .anim-cheer { animation: cheer 0.4s ease 2; }
+    .anim-spin  { animation: spin  0.6s linear; }
+    .anim-idle  { animation: idle  2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:999;color:#f9c74f;font-size:0.8rem;text-decoration:none;background:#12082a;padding:4px 10px;border-radius:6px;border:1px solid #2e1a52">← TOP</a>
+
+<!-- ── Left (main game) ── -->
+<div id="left">
+  <div id="score-display">🍪 0 クッキー</div>
+  <div id="cps-display">毎秒 0 クッキー</div>
+  <button id="cookie-btn" title="クリック！">🍪</button>
+  <div id="click-power">クリック: +1</div>
+</div>
+
+<!-- ── Right panel ── -->
+<div id="right">
+  <h2>⬆️ アップグレード</h2>
+  <div id="upgrades"></div>
+  <h2>🏗️ 施設</h2>
+  <div id="buildings"></div>
+  <h2>🏆 実績</h2>
+  <div id="milestones"></div>
+</div>
+
+<!-- ── Claude character ── -->
+<div id="claude-wrap">
+  <div id="bubble"></div>
+  <!--
+    Pixel grid: each rect = 1 unit (8px), viewBox 10×11
+    Layout (row by row):
+      Row0:        ██░░██░░██
+      Row1:  ██░░██████████░░██
+      Row2:  ██░░██████████░░██
+      Row3:  ██░░██████████░░██
+      Row4:        ██████████
+      Row5:        ██░░██░░██   ← eyes
+      Row6:        ██████████
+      Row7:  ██░░░░██░░░░██░░░░██  ← tentacles
+      Row8:  ██░░░░██░░░░██░░░░██
+      Row9:  ██░░░░██░░░░██░░░░██
+      (gap)
+     Row10:  ██░░░░██░░░░██░░░░██
+  -->
+  <svg id="claude-svg" viewBox="0 0 10 11" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <defs>
+      <rect id="p" width="1" height="1"/>
+    </defs>
+
+    <!-- Body (orange) -->
+    <!-- Row 0: col 2-3, 6-7 (shoulders) -->
+    <rect x="2" y="0" width="2" height="1" fill="#D4692A"/>
+    <rect x="6" y="0" width="2" height="1" fill="#D4692A"/>
+    <!-- Row 1: col 0-1 arm, 2-7 body, 8-9 arm -->
+    <rect x="0" y="1" width="2" height="3" fill="#D4692A"/>
+    <rect x="2" y="1" width="6" height="6" fill="#D4692A"/>
+    <rect x="8" y="1" width="2" height="3" fill="#D4692A"/>
+
+    <!-- Eyes (dark) — neutral -->
+    <g id="eyes-neutral">
+      <rect x="3" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="6" y="5" width="1" height="1" fill="#1a0a00"/>
+    </g>
+    <!-- Eyes happy (^ shape) — hidden -->
+    <g id="eyes-happy" display="none">
+      <rect x="2" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="4" y="4" width="1" height="1" fill="#1a0a00"/>
+      <rect x="5" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="7" y="4" width="1" height="1" fill="#1a0a00"/>
+    </g>
+
+    <!-- Blush (pink, hidden by default) -->
+    <rect id="blush-l" x="2" y="6" width="1" height="1" fill="#f4845f" opacity="0"/>
+    <rect id="blush-r" x="7" y="6" width="1" height="1" fill="#f4845f" opacity="0"/>
+
+    <!-- Tentacles (3 pairs: col 0-1, 4-5, 8-9) -->
+    <!-- left tentacle -->
+    <rect x="1" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="1" y="10" width="1" height="1" fill="#D4692A"/>
+    <!-- mid tentacle -->
+    <rect x="4" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="5" y="10" width="1" height="1" fill="#D4692A"/>
+    <!-- right tentacle -->
+    <rect x="7" y="7" width="2" height="3" fill="#D4692A"/>
+    <rect x="7" y="10" width="1" height="1" fill="#D4692A"/>
+
+    <!-- Highlight (lighter patch on upper-body) -->
+    <rect x="3" y="2" width="4" height="2" fill="#E8834A" opacity="0.5"/>
+  </svg>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  Game state
+// ══════════════════════════════════════
+let cookies = 0, totalCookies = 0, clickPower = 1;
+
+const upgrades = [
+  { id:'u1', name:'ゴールデンフィンガー', desc:'クリック+4',    cost:20,   bought:false, apply:()=>{ clickPower+=4; } },
+  { id:'u2', name:'サクサクの指',         desc:'クリック+20',   cost:150,  bought:false, apply:()=>{ clickPower+=20; } },
+  { id:'u3', name:'ダイヤの爪',           desc:'クリック×2',    cost:800,  bought:false, apply:()=>{ clickPower*=2; } },
+  { id:'u4', name:'タイムワープ',         desc:'全施設CPS×2',   cost:3000, bought:false, apply:()=>{ buildings.forEach(b=>b.cps*=2); } },
+];
+
+const buildings = [
+  { id:'b1', name:'🏠 自動クリッカー', desc:'毎秒 0.1 クッキー', baseCost:15,   cps:0.1,  owned:0 },
+  { id:'b2', name:'🏭 ベーカリー',     desc:'毎秒 0.5 クッキー', baseCost:80,   cps:0.5,  owned:0 },
+  { id:'b3', name:'🏦 クッキー銀行',   desc:'毎秒 2 クッキー',   baseCost:300,  cps:2,    owned:0 },
+  { id:'b4', name:'🚀 宇宙工場',       desc:'毎秒 10 クッキー',  baseCost:1200, cps:10,   owned:0 },
+  { id:'b5', name:'⏳ 時空炉',         desc:'毎秒 50 クッキー',  baseCost:5000, cps:50,   owned:0 },
+];
+
+const milestoneList = [
+  { label:'🍪 初めてのクッキー',    target:1 },
+  { label:'🎉 100クッキー達成',     target:100 },
+  { label:'✨ 1,000クッキー達成',   target:1000 },
+  { label:'💎 10,000クッキー達成',  target:10000 },
+  { label:'🚀 100,000クッキー達成', target:100000 },
+];
+const achieved = new Set();
+
+function fmt(n){
+  if(n>=1e9) return (n/1e9).toFixed(2)+' 億';
+  if(n>=1e6) return (n/1e6).toFixed(2)+' 百万';
+  if(n>=1e3) return (n/1e3).toFixed(1)+' 千';
+  return Math.floor(n).toLocaleString();
+}
+function buildingCost(b){ return Math.ceil(b.baseCost*Math.pow(1.15,b.owned)); }
+function totalCPS(){ return buildings.reduce((s,b)=>s+b.cps*b.owned,0); }
+
+// ══════════════════════════════════════
+//  Claude Character Controller
+// ══════════════════════════════════════
+const claudeWrap = document.getElementById('claude-wrap');
+const claudeSvg  = document.getElementById('claude-svg');
+const bubble     = document.getElementById('bubble');
+
+// Edge path: clockwise around the viewport
+// Each waypoint: {x, y} (top-left of the 80px wrap)
+const MARGIN = 10;
+const W = ()=> window.innerWidth  - 80 - MARGIN;
+const H = ()=> window.innerHeight - 90 - MARGIN;
+
+function rnd(a,b){ return a + Math.random()*(b-a); }
+
+// State
+let claude = {
+  x: 0, y: 100,
+  targetX: 0, targetY: 300,
+  speed: 1.5,         // px per frame (scaled by mood)
+  state: 'walk',      // walk | react | idle
+  reactTimer: 0,
+  bubbleTimer: 0,
+  flipX: false,
+};
+
+const QUIPS_CLICK    = ['うまい！', 'いいね！', 'がんばれ！', 'もっと！', 'いけー！'];
+const QUIPS_BUILDING = ['施設GET!', 'すごい！', 'やったね！', '最高だ！', '拡大中！'];
+const QUIPS_IDLE     = ['...', 'ふむ...', 'もっと？', 'いい感じ！'];
+const QUIPS_MILESTONE= ['🎉すごい！', '新記録！', '最強だ！'];
+
+let bubbleTimeout = null;
+
+function showBubble(text, duration=1600){
+  bubble.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(bubbleTimeout);
+  bubbleTimeout = setTimeout(()=> bubble.classList.remove('show'), duration);
+}
+
+function setEmotion(type){
+  const neutral = document.getElementById('eyes-neutral');
+  const happy   = document.getElementById('eyes-happy');
+  const blushL  = document.getElementById('blush-l');
+  const blushR  = document.getElementById('blush-r');
+
+  if(type==='happy'){
+    neutral.setAttribute('display','none');
+    happy.setAttribute('display','');
+    blushL.setAttribute('opacity','0.8');
+    blushR.setAttribute('opacity','0.8');
+  } else if(type==='excited'){
+    neutral.setAttribute('display','none');
+    happy.setAttribute('display','');
+    blushL.setAttribute('opacity','1');
+    blushR.setAttribute('opacity','1');
+  } else {
+    neutral.setAttribute('display','');
+    happy.setAttribute('display','none');
+    blushL.setAttribute('opacity','0');
+    blushR.setAttribute('opacity','0');
+  }
+}
+
+function setAnim(cls){
+  claudeSvg.className.baseVal = '';
+  if(cls) claudeSvg.classList.add(cls);
+}
+
+// Pick a new random edge target
+function pickEdgeTarget(){
+  const w = W(), h = H();
+  const edge = Math.floor(Math.random()*4);
+  switch(edge){
+    case 0: return { x: rnd(MARGIN, w), y: MARGIN };            // top
+    case 1: return { x: w,              y: rnd(MARGIN, h) };    // right
+    case 2: return { x: rnd(MARGIN, w), y: h };                 // bottom
+    case 3: return { x: MARGIN,         y: rnd(MARGIN, h) };    // left
+  }
+}
+
+// Trigger a react event
+function claudeReact(type){
+  if(claude.state==='react' && claude.reactTimer>20) return; // debounce
+  claude.state = 'react';
+  claude.reactTimer = 0;
+
+  if(type==='click'){
+    setAnim('anim-jump');
+    setEmotion('happy');
+    showBubble(QUIPS_CLICK[Math.floor(Math.random()*QUIPS_CLICK.length)], 1200);
+  } else if(type==='buy'){
+    setAnim('anim-cheer');
+    setEmotion('excited');
+    showBubble(QUIPS_BUILDING[Math.floor(Math.random()*QUIPS_BUILDING.length)], 1800);
+  } else if(type==='milestone'){
+    setAnim('anim-spin');
+    setEmotion('excited');
+    showBubble(QUIPS_MILESTONE[Math.floor(Math.random()*QUIPS_MILESTONE.length)], 2500);
+  }
+}
+
+// Main animation loop
+let lastTime = 0;
+function loop(ts){
+  const dt = Math.min(ts - lastTime, 50);
+  lastTime = ts;
+
+  // React timer
+  if(claude.state==='react'){
+    claude.reactTimer += dt;
+    if(claude.reactTimer > 700){
+      claude.state = 'walk';
+      setAnim('anim-walk');
+
+      // Emotion based on score
+      if(totalCookies > 1000) setEmotion('happy');
+      else setEmotion('neutral');
+
+      claude.targetX = pickEdgeTarget().x;
+      claude.targetY = pickEdgeTarget().y;
+      const t = pickEdgeTarget();
+      claude.targetX = t.x; claude.targetY = t.y;
+    }
+  }
+
+  // Movement
+  if(claude.state==='walk'){
+    const dx = claude.targetX - claude.x;
+    const dy = claude.targetY - claude.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const spd = claude.speed + totalCPS()*0.002; // faster when more CPS
+
+    if(dist < 3){
+      // Pick new target
+      const t = pickEdgeTarget();
+      claude.targetX = t.x;
+      claude.targetY = t.y;
+    } else {
+      const step = Math.min(spd*(dt/16), dist);
+      claude.x += (dx/dist)*step;
+      claude.y += (dy/dist)*step;
+      claude.flipX = dx < 0;
+    }
+  }
+
+  // Apply position + flip
+  claudeWrap.style.left = claude.x + 'px';
+  claudeWrap.style.top  = claude.y + 'px';
+  claudeSvg.style.transform = claude.flipX ? 'scaleX(-1)' : 'scaleX(1)';
+
+  // Idle quip
+  claude.bubbleTimer = (claude.bubbleTimer||0) + dt;
+  if(claude.bubbleTimer > 8000 && claude.state==='walk'){
+    claude.bubbleTimer = 0;
+    if(Math.random()<0.4) showBubble(QUIPS_IDLE[Math.floor(Math.random()*QUIPS_IDLE.length)], 1500);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// Init starting position
+const startT = pickEdgeTarget();
+claude.x = startT.x; claude.y = startT.y;
+claudeWrap.style.left = claude.x+'px';
+claudeWrap.style.top  = claude.y+'px';
+setAnim('anim-walk');
+requestAnimationFrame(loop);
+
+// ══════════════════════════════════════
+//  Render
+// ══════════════════════════════════════
+function renderScore(){
+  document.getElementById('score-display').textContent = `🍪 ${fmt(cookies)} クッキー`;
+  document.getElementById('cps-display').textContent   = `毎秒 ${totalCPS().toFixed(1)} クッキー`;
+  document.getElementById('click-power').textContent   = `クリック: +${fmt(clickPower)}`;
+}
+
+function renderUpgrades(){
+  const el = document.getElementById('upgrades');
+  el.innerHTML='';
+  const pending = upgrades.filter(u=>!u.bought);
+  pending.forEach(u=>{
+    const btn=document.createElement('button');
+    btn.className='upgrade-btn';
+    btn.disabled=cookies<u.cost;
+    btn.dataset.cost = u.cost;
+    btn.innerHTML=`<div><div class="upg-name">${u.name}</div><div class="upg-desc">${u.desc}</div><div class="need-hint" style="font-size:0.7rem;color:#f87171">${cookies < u.cost ? `あと🍪${fmt(u.cost-cookies)}` : ''}</div></div><div class="upg-cost">🍪${fmt(u.cost)}</div>`;
+    btn.onclick=()=>{
+      if(cookies>=u.cost){ cookies-=u.cost; u.bought=true; u.apply(); claudeReact('buy'); render(); }
+    };
+    el.appendChild(btn);
+  });
+  if(!pending.length) el.innerHTML='<p style="color:#aaa;font-size:0.82rem">全アップグレード済み！</p>';
+}
+
+function renderBuildings(){
+  const el=document.getElementById('buildings');
+  el.innerHTML='';
+  buildings.forEach(b=>{
+    const cost=buildingCost(b);
+    const btn=document.createElement('button');
+    btn.className='building-btn';
+    btn.dataset.id=b.id;
+    btn.disabled=cookies<cost;
+    btn.innerHTML=`
+      <div class="building-header">
+        <span class="building-name">${b.name}</span>
+        <span class="building-owned">${b.owned}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="building-desc">${b.desc}</span>
+        <span class="building-cost">🍪${fmt(cost)}</span>
+      </div>`;
+    btn.onclick=()=>{
+      const c=buildingCost(b);
+      if(cookies>=c){ cookies-=c; b.owned++; claudeReact('buy'); render(); }
+    };
+    el.appendChild(btn);
+  });
+}
+
+function renderMilestones(){
+  const el=document.getElementById('milestones');
+  milestoneList.forEach(m=>{
+    if(totalCookies>=m.target && !achieved.has(m.target)){
+      achieved.add(m.target);
+      const s=document.createElement('span');
+      s.textContent=m.label;
+      el.prepend(s);
+      claudeReact('milestone');
+    }
+  });
+}
+
+function render(){
+  renderScore();
+  renderUpgrades();
+  renderBuildings();
+  renderMilestones();
+}
+
+// ボタンのdisabled状態とコスト表示だけ更新（DOMを破壊しない）
+function updateButtonStates(){
+  renderScore();
+  renderMilestones();
+
+  // アップグレードボタン
+  document.querySelectorAll('#upgrades .upgrade-btn').forEach(btn=>{
+    const cost = parseInt(btn.dataset.cost);
+    const wasDisabled = btn.disabled;
+    btn.disabled = cookies < cost;
+    // 「あとX枚」ヒントを更新
+    const hint = btn.querySelector('.need-hint');
+    if(hint){
+      hint.textContent = cookies < cost ? `あと🍪${fmt(cost - cookies)}` : '';
+    }
+  });
+
+  // 施設ボタン
+  document.querySelectorAll('#buildings .building-btn').forEach(btn=>{
+    const id = btn.dataset.id;
+    const b = buildings.find(x=>x.id===id);
+    if(!b) return;
+    const cost = buildingCost(b);
+    btn.disabled = cookies < cost;
+    const costEl = btn.querySelector('.building-cost');
+    if(costEl) costEl.textContent = `🍪${fmt(cost)}`;
+  });
+}
+
+// ══════════════════════════════════════
+//  Click handler
+// ══════════════════════════════════════
+document.getElementById('cookie-btn').addEventListener('click', e=>{
+  cookies      += clickPower;
+  totalCookies += clickPower;
+
+  const ft=document.createElement('div');
+  ft.className='float-text';
+  ft.textContent=`+${fmt(clickPower)}`;
+  ft.style.left=(e.clientX-20)+'px';
+  ft.style.top =(e.clientY-10)+'px';
+  document.body.appendChild(ft);
+  setTimeout(()=>ft.remove(), 900);
+
+  claudeReact('click');
+  render();
+});
+
+// ══════════════════════════════════════
+//  Auto production (50ms tick)
+// ══════════════════════════════════════
+setInterval(()=>{
+  const gain=totalCPS()/20;
+  cookies      += gain;
+  totalCookies += gain;
+  updateButtonStates(); // DOMを破壊せずスコアとボタン状態だけ更新
+}, 50);
+</script>
+</body>
+</html>

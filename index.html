@@ -3,119 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>サンプルページ</title>
+  <title>Claude ミニゲーム集</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
-      color: #333;
-      display: flex;
-      flex-direction: column;
+      background: #1a0a2e;
+      color: #fff;
       min-height: 100vh;
     }
-
     header {
-      background: #2563eb;
-      color: white;
-      padding: 1rem 2rem;
+      text-align: center;
+      padding: 3rem 1rem 1.5rem;
+    }
+    header h1 { font-size: 2.2rem; color: #f9c74f; margin-bottom: 0.4rem; }
+    header p  { color: #aaa; font-size: 1rem; }
+
+    .claude-header {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1rem;
     }
 
-    header h1 {
-      font-size: 1.5rem;
-    }
-
-    main {
-      flex: 1;
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      width: 100%;
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 4rem;
     }
 
     .card {
-      background: white;
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      background: #12082a;
+      border: 1px solid #2e1a52;
+      border-radius: 12px;
+      padding: 1.4rem 1.2rem;
+      text-decoration: none;
+      color: #fff;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-
-    .card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 0.75rem;
-      color: #2563eb;
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #f9c74f;
+      box-shadow: 0 6px 24px #f9c74f22;
     }
-
-    .card p {
-      line-height: 1.6;
-      color: #555;
-    }
-
-    button {
-      margin-top: 1rem;
-      padding: 0.5rem 1.25rem;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    #message {
-      margin-top: 0.75rem;
-      color: #16a34a;
-      font-weight: bold;
-      min-height: 1.5rem;
+    .card .icon { font-size: 2.4rem; }
+    .card .name { font-size: 1.05rem; font-weight: bold; color: #f9c74f; }
+    .card .desc { font-size: 0.82rem; color: #aaa; line-height: 1.5; }
+    .card .tag  {
+      display: inline-block;
+      background: #2e1a52;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      color: #90e0ef;
+      width: fit-content;
     }
 
     footer {
       text-align: center;
+      color: #555;
+      font-size: 0.8rem;
       padding: 1rem;
-      font-size: 0.85rem;
-      color: #888;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>サンプルページ</h1>
-  </header>
+<header>
+  <!-- Claude pixel character -->
+  <div class="claude-header">
+    <svg width="60" height="66" viewBox="0 0 10 11" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" style="image-rendering:pixelated">
+      <rect x="2" y="0" width="2" height="1" fill="#D4692A"/>
+      <rect x="6" y="0" width="2" height="1" fill="#D4692A"/>
+      <rect x="0" y="1" width="2" height="3" fill="#D4692A"/>
+      <rect x="2" y="1" width="6" height="6" fill="#D4692A"/>
+      <rect x="8" y="1" width="2" height="3" fill="#D4692A"/>
+      <rect x="3" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="6" y="5" width="1" height="1" fill="#1a0a00"/>
+      <rect x="1" y="7" width="2" height="3" fill="#D4692A"/>
+      <rect x="1" y="10" width="1" height="1" fill="#D4692A"/>
+      <rect x="4" y="7" width="2" height="3" fill="#D4692A"/>
+      <rect x="5" y="10" width="1" height="1" fill="#D4692A"/>
+      <rect x="7" y="7" width="2" height="3" fill="#D4692A"/>
+      <rect x="7" y="10" width="1" height="1" fill="#D4692A"/>
+      <rect x="3" y="2" width="4" height="2" fill="#E8834A" opacity="0.5"/>
+    </svg>
+  </div>
+  <h1>Claude ミニゲーム集</h1>
+  <p>10種類のゲームを楽しもう！</p>
+</header>
 
-  <main>
-    <div class="card">
-      <h2>ようこそ</h2>
-      <p>これはシンプルな HTML サンプルページです。HTML・CSS・JavaScript の基本的な構成を示しています。</p>
-    </div>
+<div id="grid">
+  <a class="card" href="games/clicker.html">
+    <div class="icon">🍪</div>
+    <div class="name">クッキークリッカー</div>
+    <div class="desc">クッキーをクリックして施設を買い、自動生産を増やそう</div>
+    <div class="tag">放置系</div>
+  </a>
+  <a class="card" href="games/snake.html">
+    <div class="icon">🐍</div>
+    <div class="name">スネーク</div>
+    <div class="desc">矢印キーで蛇を操作。えさを食べて長くなれ！</div>
+    <div class="tag">アクション</div>
+  </a>
+  <a class="card" href="games/memory.html">
+    <div class="icon">🃏</div>
+    <div class="name">神経衰弱</div>
+    <div class="desc">カードをめくってペアを見つけよう</div>
+    <div class="tag">記憶</div>
+  </a>
+  <a class="card" href="games/mole.html">
+    <div class="icon">🔨</div>
+    <div class="name">モグラたたき</div>
+    <div class="desc">出てくるClaudeをクリックしてポイントを稼ごう</div>
+    <div class="tag">反射</div>
+  </a>
+  <a class="card" href="games/typing.html">
+    <div class="icon">⌨️</div>
+    <div class="name">タイピング</div>
+    <div class="desc">落ちてくる単語を素早く入力しよう</div>
+    <div class="tag">タイピング</div>
+  </a>
+  <a class="card" href="games/reaction.html">
+    <div class="icon">⚡</div>
+    <div class="name">反射神経テスト</div>
+    <div class="desc">画面が変わったら即クリック！反応速度を測れ</div>
+    <div class="tag">反射</div>
+  </a>
+  <a class="card" href="games/puzzle2048.html">
+    <div class="icon">🔢</div>
+    <div class="name">2048</div>
+    <div class="desc">タイルをスライドして2048を目指せ！</div>
+    <div class="tag">パズル</div>
+  </a>
+  <a class="card" href="games/breakout.html">
+    <div class="icon">🧱</div>
+    <div class="name">ブロック崩し</div>
+    <div class="desc">バーでボールを跳ね返してブロックを全部壊そう</div>
+    <div class="tag">アクション</div>
+  </a>
+  <a class="card" href="games/janken.html">
+    <div class="icon">✊</div>
+    <div class="name">じゃんけん</div>
+    <div class="desc">Claudeとじゃんけん！連勝を目指せ</div>
+    <div class="tag">対戦</div>
+  </a>
+  <a class="card" href="games/quiz.html">
+    <div class="icon">❓</div>
+    <div class="name">雑学クイズ</div>
+    <div class="desc">全10問の4択クイズ。全問正解できるかな？</div>
+    <div class="tag">クイズ</div>
+  </a>
+</div>
 
-    <div class="card">
-      <h2>インタラクション</h2>
-      <p>ボタンをクリックすると、メッセージが表示されます。</p>
-      <button onclick="showMessage()">クリックしてください</button>
-      <p id="message"></p>
-    </div>
-  </main>
-
-  <footer>
-    <p>&copy; 2026 サンプルページ</p>
-  </footer>
-
-  <script>
-    function showMessage() {
-      document.getElementById('message').textContent = 'こんにちは！JavaScript が動いています。';
-    }
-  </script>
+<footer>© 2026 Claude ミニゲーム集</footer>
 
 </body>
 </html>

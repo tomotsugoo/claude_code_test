@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ブロック崩し - Claude ミニゲーム集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a0a2e; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    a.back { position: fixed; top: 10px; left: 10px; color: #f9c74f; font-size: 0.8rem; text-decoration: none; background: #12082a; padding: 4px 10px; border-radius: 6px; border: 1px solid #2e1a52; }
+    h1 { font-size: 1.5rem; color: #f9c74f; margin-bottom: 0.5rem; }
+    #info { display: flex; gap: 2rem; color: #aaa; font-size: 0.9rem; margin-bottom: 0.6rem; }
+    #info span { color: #fff; font-weight: bold; }
+    canvas { border: 2px solid #2e1a52; border-radius: 6px; display: block; cursor: none; }
+    #msg { margin-top: 0.8rem; font-size: 1rem; color: #f9c74f; min-height: 1.5rem; text-align: center; }
+    button { margin-top: 0.6rem; padding: 0.5rem 1.5rem; background: #2e1a52; color: #fff; border: 1px solid #f9c74f; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #3d2466; }
+    #controls { margin-top: 0.5rem; color: #555; font-size: 0.78rem; }
+  </style>
+</head>
+<body>
+<a class="back" href="../index.html">← TOP</a>
+<h1>🧱 ブロック崩し</h1>
+<div id="info">スコア: <span id="score">0</span>&nbsp;&nbsp;残機: <span id="lives">❤️❤️❤️</span></div>
+<canvas id="c" width="480" height="360"></canvas>
+<div id="msg">クリック or スペースでスタート</div>
+<button id="btn">スタート</button>
+<div id="controls">マウス / ← → キーでバー移動</div>
+
+<script>
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+const W = C.width, H = C.height;
+
+const ROWS = 5, COLS = 10, BW = 42, BH = 16, BPAD = 4;
+const COLORS = ['#ef476f','#f9c74f','#06d6a0','#118ab2','#D4692A'];
+
+let bx, by, vx, vy, px, pw, score, lives, blocks, running, rafId;
+
+function initBlocks() {
+  blocks = [];
+  const offX = (W - COLS*(BW+BPAD)) / 2;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+    blocks.push({x: offX+c*(BW+BPAD), y: 40+r*(BH+BPAD), alive: true, color: COLORS[r]});
+  }
+}
+
+function init() {
+  score = 0; lives = 3; pw = 80;
+  px = W/2 - pw/2;
+  bx = W/2; by = H-60;
+  const spd = 3.5;
+  const ang = (Math.random()*0.6+0.2) * Math.PI;
+  vx = Math.cos(ang)*spd; vy = -Math.sin(ang)*spd;
+  initBlocks();
+  document.getElementById('score').textContent = 0;
+  document.getElementById('lives').textContent = '❤️'.repeat(3);
+  document.getElementById('msg').textContent = '';
+  document.getElementById('btn').style.display = 'none';
+  running = true;
+  cancelAnimationFrame(rafId);
+  loop();
+}
+
+function loop() {
+  if (!running) return;
+  update();
+  draw();
+  rafId = requestAnimationFrame(loop);
+}
+
+function update() {
+  bx += vx; by += vy;
+  // walls
+  if(bx < 8){ bx=8; vx=Math.abs(vx); }
+  if(bx > W-8){ bx=W-8; vx=-Math.abs(vx); }
+  if(by < 8){ by=8; vy=Math.abs(vy); }
+  // paddle
+  if(by > H-24 && bx>px && bx<px+pw && vy>0) {
+    vy = -Math.abs(vy);
+    vx += ((bx-(px+pw/2))/(pw/2))*1.5;
+    const spd = Math.sqrt(vx*vx+vy*vy);
+    vx=vx/spd*4; vy=vy/spd*4;
+  }
+  // bottom
+  if(by > H) {
+    lives--;
+    document.getElementById('lives').textContent = '❤️'.repeat(Math.max(0,lives));
+    if(lives<=0){ running=false; document.getElementById('msg').textContent=`ゲームオーバー！スコア: ${score}`; document.getElementById('btn').style.display=''; document.getElementById('btn').textContent='もう一度'; return; }
+    bx=W/2; by=H-60; vx=2.5; vy=-3.5;
+  }
+  // blocks
+  blocks.forEach(b=>{
+    if(!b.alive) return;
+    if(bx>b.x&&bx<b.x+BW&&by>b.y&&by<b.y+BH) {
+      b.alive=false; vy=-vy; score+=10;
+      document.getElementById('score').textContent=score;
+    }
+  });
+  if(blocks.every(b=>!b.alive)){ running=false; document.getElementById('msg').textContent='クリア！🎉'; document.getElementById('btn').style.display=''; document.getElementById('btn').textContent='もう一度'; }
+}
+
+function draw() {
+  ctx.fillStyle='#0d0520'; ctx.fillRect(0,0,W,H);
+  // blocks
+  blocks.forEach(b=>{
+    if(!b.alive) return;
+    ctx.fillStyle=b.color;
+    ctx.beginPath(); ctx.roundRect(b.x,b.y,BW,BH,3); ctx.fill();
+  });
+  // paddle
+  ctx.fillStyle='#90e0ef';
+  ctx.beginPath(); ctx.roundRect(px,H-20,pw,10,5); ctx.fill();
+  // ball
+  ctx.fillStyle='#f9c74f';
+  ctx.beginPath(); ctx.arc(bx,by,7,0,Math.PI*2); ctx.fill();
+}
+
+// Controls
+C.addEventListener('mousemove', e=>{
+  const rect=C.getBoundingClientRect();
+  px = e.clientX - rect.left - pw/2;
+  px = Math.max(0, Math.min(W-pw, px));
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft') px=Math.max(0,px-20);
+  if(e.key==='ArrowRight') px=Math.min(W-pw,px+20);
+  if(e.key===' ' && !running) init();
+});
+document.getElementById('btn').addEventListener('click', init);
+C.addEventListener('click', ()=>{ if(!running) init(); });
+
+// idle draw
+ctx.fillStyle='#0d0520'; ctx.fillRect(0,0,W,H);
+</script>
+</body>
+</html>
