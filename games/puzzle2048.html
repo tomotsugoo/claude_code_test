@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2048 - Claude ミニゲーム集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a0a2e; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 1.5rem 1rem; }
+    a.back { position: fixed; top: 10px; left: 10px; color: #f9c74f; font-size: 0.8rem; text-decoration: none; background: #12082a; padding: 4px 10px; border-radius: 6px; border: 1px solid #2e1a52; }
+    h1 { font-size: 1.5rem; color: #f9c74f; margin-bottom: 0.4rem; }
+    #info { display: flex; gap: 2rem; color: #aaa; font-size: 0.9rem; margin-bottom: 1rem; }
+    #info span { color: #fff; font-weight: bold; }
+    #board {
+      display: grid; grid-template-columns: repeat(4,90px); gap: 8px;
+      background: #0d0520; padding: 10px; border-radius: 10px;
+      border: 2px solid #2e1a52;
+    }
+    .tile {
+      width: 90px; height: 90px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: bold;
+      transition: transform 0.08s;
+      background: #1f0f3a;
+    }
+    .tile[data-v="2"]    { background:#3d2466; color:#fff; }
+    .tile[data-v="4"]    { background:#512d7a; color:#fff; }
+    .tile[data-v="8"]    { background:#D4692A; color:#fff; }
+    .tile[data-v="16"]   { background:#e07b33; color:#fff; }
+    .tile[data-v="32"]   { background:#e8954a; color:#fff; }
+    .tile[data-v="64"]   { background:#f9a825; color:#fff; }
+    .tile[data-v="128"]  { background:#f9c74f; color:#1a0a2e; font-size:1.1rem; }
+    .tile[data-v="256"]  { background:#ffd166; color:#1a0a2e; font-size:1.1rem; }
+    .tile[data-v="512"]  { background:#06d6a0; color:#fff; font-size:1rem; }
+    .tile[data-v="1024"] { background:#118ab2; color:#fff; font-size:0.9rem; }
+    .tile[data-v="2048"] { background:#ef476f; color:#fff; font-size:0.9rem; }
+    #msg { margin-top: 1rem; font-size: 1rem; color: #f9c74f; min-height: 1.5rem; }
+    button { margin-top: 0.6rem; padding: 0.5rem 1.5rem; background: #2e1a52; color: #fff; border: 1px solid #f9c74f; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #3d2466; }
+    #controls { margin-top: 0.6rem; color: #555; font-size: 0.78rem; }
+  </style>
+</head>
+<body>
+<a class="back" href="../index.html">← TOP</a>
+<h1>🔢 2048</h1>
+<div id="info">スコア: <span id="score">0</span>&nbsp;&nbsp;最高: <span id="best">0</span></div>
+<div id="board"></div>
+<div id="msg"></div>
+<button id="btn">リセット</button>
+<div id="controls">矢印キー / スワイプ で操作</div>
+
+<script>
+let grid, score, best = 0;
+const SIZE = 4;
+
+function newGrid() { return Array.from({length:SIZE},()=>Array(SIZE).fill(0)); }
+
+function addRandom(g) {
+  const empty = [];
+  g.forEach((row,r)=>row.forEach((v,c)=>{ if(!v) empty.push([r,c]); }));
+  if (!empty.length) return;
+  const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+  g[r][c] = Math.random()<0.9 ? 2 : 4;
+}
+
+function slideRow(row) {
+  let r = row.filter(v=>v);
+  let merged = false;
+  for(let i=0;i<r.length-1;i++) {
+    if(r[i]===r[i+1] && !merged) { r[i]*=2; score+=r[i]; r.splice(i+1,1); merged=true; }
+    else merged=false;
+  }
+  while(r.length<SIZE) r.push(0);
+  return r;
+}
+
+function move(dir) {
+  const prev = JSON.stringify(grid);
+  for(let r=0;r<SIZE;r++) {
+    for(let c=0;c<SIZE;c++) {
+      if(dir==='left')  grid[r] = slideRow(grid[r]);
+      if(dir==='right') grid[r] = slideRow([...grid[r]].reverse()).reverse();
+      if(dir==='up') {
+        let col = grid.map(row=>row[r]);
+        col = slideRow(col);
+        col.forEach((v,i)=>grid[i][r]=v);
+      }
+      if(dir==='down') {
+        let col = grid.map(row=>row[r]).reverse();
+        col = slideRow(col);
+        col.reverse().forEach((v,i)=>grid[i][r]=v);
+      }
+    }
+    break;
+  }
+  if(JSON.stringify(grid)!==prev) {
+    addRandom(grid);
+    if(score>best) best=score;
+    render();
+    check();
+  }
+}
+
+function check() {
+  if(grid.some(row=>row.includes(2048))) { document.getElementById('msg').textContent='🎉 2048達成！'; return; }
+  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) {
+    if(!grid[r][c]) return;
+    if(c<SIZE-1&&grid[r][c]===grid[r][c+1]) return;
+    if(r<SIZE-1&&grid[r][c]===grid[r+1][c]) return;
+  }
+  document.getElementById('msg').textContent = `ゲームオーバー！スコア: ${score}`;
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  document.getElementById('score').textContent = score;
+  document.getElementById('best').textContent = best;
+  grid.forEach(row=>row.forEach(v=>{
+    const t = document.createElement('div');
+    t.className = 'tile';
+    t.dataset.v = v || '';
+    t.textContent = v || '';
+    board.appendChild(t);
+  }));
+}
+
+function init() {
+  grid = newGrid(); score = 0;
+  document.getElementById('msg').textContent = '';
+  addRandom(grid); addRandom(grid);
+  render();
+}
+
+document.addEventListener('keydown', e=>{
+  const map = {ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+  if(map[e.key]) { e.preventDefault(); move(map[e.key]); }
+});
+
+// Swipe
+let tx=0, ty=0;
+document.getElementById('board').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.getElementById('board').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy)) move(dx>0?'right':'left');
+  else move(dy>0?'down':'up');
+},{passive:true});
+
+document.getElementById('btn').addEventListener('click', init);
+init();
+</script>
+</body>
+</html>

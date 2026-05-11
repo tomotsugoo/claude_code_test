@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>反射神経テスト - Claude ミニゲーム集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a0a2e; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    a.back { position: fixed; top: 10px; left: 10px; color: #f9c74f; font-size: 0.8rem; text-decoration: none; background: #12082a; padding: 4px 10px; border-radius: 6px; border: 1px solid #2e1a52; }
+    h1 { font-size: 1.5rem; color: #f9c74f; margin-bottom: 1rem; }
+    #arena {
+      width: 360px; height: 360px; border-radius: 16px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; border: 3px solid #2e1a52;
+      background: #0d0520;
+      transition: background 0.05s;
+      user-select: none;
+    }
+    #arena.wait  { background: #0d0520; }
+    #arena.ready { background: #16a34a; border-color: #4ade80; }
+    #arena.early { background: #991b1b; border-color: #f87171; }
+    #arena-text { font-size: 1.6rem; font-weight: bold; text-align: center; line-height: 1.5; pointer-events: none; }
+    #results { margin-top: 1.2rem; text-align: center; }
+    #results p { color: #aaa; font-size: 0.9rem; margin: 2px 0; }
+    #results span { color: #f9c74f; font-weight: bold; }
+    #history { margin-top: 0.8rem; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .badge { background: #12082a; border: 1px solid #2e1a52; border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; color: #90e0ef; }
+  </style>
+</head>
+<body>
+<a class="back" href="../index.html">← TOP</a>
+<h1>⚡ 反射神経テスト</h1>
+<div id="arena" class="wait">
+  <div id="arena-text">クリックして<br>スタート</div>
+</div>
+<div id="results">
+  <p>最速: <span id="best">—</span></p>
+  <p>平均: <span id="avg">—</span></p>
+</div>
+<div id="history"></div>
+
+<script>
+let state = 'idle'; // idle | waiting | ready | early
+let waitTimer, startTime;
+const times = [];
+
+const arena = document.getElementById('arena');
+const text  = document.getElementById('arena-text');
+
+function setWaiting() {
+  state = 'waiting';
+  arena.className = 'wait';
+  text.textContent = '待って…';
+  const delay = 1500 + Math.random() * 3000;
+  waitTimer = setTimeout(() => {
+    state = 'ready';
+    arena.className = 'ready';
+    text.textContent = '今だ！\nクリック！';
+    startTime = Date.now();
+  }, delay);
+}
+
+function addBadge(ms) {
+  const b = document.createElement('div');
+  b.className = 'badge';
+  b.textContent = ms + 'ms';
+  document.getElementById('history').prepend(b);
+  if (document.getElementById('history').children.length > 8) {
+    document.getElementById('history').lastChild.remove();
+  }
+}
+
+function updateStats() {
+  if (!times.length) return;
+  const best = Math.min(...times);
+  const avg  = Math.round(times.reduce((a,b)=>a+b,0)/times.length);
+  document.getElementById('best').textContent = best + 'ms';
+  document.getElementById('avg').textContent  = avg + 'ms';
+}
+
+arena.addEventListener('click', () => {
+  if (state === 'idle') {
+    setWaiting();
+  } else if (state === 'waiting') {
+    clearTimeout(waitTimer);
+    state = 'early';
+    arena.className = 'early';
+    text.textContent = '早すぎ！\n落ち着いて…';
+    setTimeout(() => { state = 'idle'; arena.className='wait'; text.textContent='クリックして\nスタート'; }, 1500);
+  } else if (state === 'ready') {
+    const ms = Date.now() - startTime;
+    times.push(ms);
+    addBadge(ms);
+    updateStats();
+    let grade = ms < 200 ? '神速！⚡' : ms < 300 ? '速い！👍' : ms < 500 ? 'まあまあ' : 'もっと早く…';
+    state = 'idle';
+    arena.className = 'wait';
+    text.textContent = `${ms}ms\n${grade}\n\nもう一度？`;
+  }
+});
+</script>
+</body>
+</html>

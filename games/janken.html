@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>じゃんけん - Claude ミニゲーム集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a0a2e; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 2rem 1rem; }
+    a.back { position: fixed; top: 10px; left: 10px; color: #f9c74f; font-size: 0.8rem; text-decoration: none; background: #12082a; padding: 4px 10px; border-radius: 6px; border: 1px solid #2e1a52; }
+    h1 { font-size: 1.5rem; color: #f9c74f; margin-bottom: 0.3rem; }
+    #record { color: #aaa; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    #record span { color: #fff; font-weight: bold; }
+    #battle {
+      display: flex; align-items: center; gap: 2rem; margin-bottom: 1.5rem;
+    }
+    .fighter { text-align: center; }
+    .fighter .hand { font-size: 4rem; min-height: 72px; transition: transform 0.2s; }
+    .fighter .label { font-size: 0.85rem; color: #aaa; margin-top: 0.4rem; }
+    #vs { font-size: 1.4rem; color: #f9c74f; font-weight: bold; }
+    #result {
+      font-size: 1.5rem; font-weight: bold; min-height: 2rem;
+      margin-bottom: 1.2rem; color: #f9c74f;
+    }
+    #buttons { display: flex; gap: 1rem; margin-bottom: 1.2rem; }
+    .choice-btn {
+      font-size: 2.2rem; padding: 0.8rem 1rem;
+      background: #12082a; border: 2px solid #2e1a52; border-radius: 12px;
+      cursor: pointer; transition: transform 0.1s, border-color 0.1s;
+      line-height: 1;
+    }
+    .choice-btn:hover { transform: scale(1.1); border-color: #f9c74f; }
+    .choice-btn:active { transform: scale(0.95); }
+    #streak { font-size: 1rem; color: #90e0ef; min-height: 1.5rem; }
+    #history { display: flex; gap: 4px; margin-top: 0.8rem; flex-wrap: wrap; justify-content: center; max-width: 300px; }
+    .hist { font-size: 0.85rem; padding: 2px 6px; border-radius: 4px; }
+    .hist.win  { background: #16a34a22; color: #4ade80; border: 1px solid #16a34a; }
+    .hist.lose { background: #991b1b22; color: #f87171; border: 1px solid #991b1b; }
+    .hist.draw { background: #1e1a2e; color: #aaa; border: 1px solid #333; }
+
+    /* Claude pixel char */
+    .claude-mini { image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+<a class="back" href="../index.html">← TOP</a>
+<h1>✊ じゃんけん</h1>
+<div id="record">勝: <span id="w">0</span> 負: <span id="l">0</span> 引分: <span id="d">0</span>&nbsp;&nbsp;連勝: <span id="streak">0</span></div>
+
+<div id="battle">
+  <div class="fighter">
+    <div class="hand" id="my-hand">✊</div>
+    <div class="label">あなた</div>
+  </div>
+  <div id="vs">VS</div>
+  <div class="fighter">
+    <div style="margin-bottom:4px">
+      <svg width="50" height="55" viewBox="0 0 10 11" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" class="claude-mini">
+        <rect x="2" y="0" width="2" height="1" fill="#D4692A"/>
+        <rect x="6" y="0" width="2" height="1" fill="#D4692A"/>
+        <rect x="0" y="1" width="2" height="3" fill="#D4692A"/>
+        <rect x="2" y="1" width="6" height="6" fill="#D4692A"/>
+        <rect x="8" y="1" width="2" height="3" fill="#D4692A"/>
+        <rect x="3" y="5" width="1" height="1" fill="#1a0a00"/>
+        <rect x="6" y="5" width="1" height="1" fill="#1a0a00"/>
+        <rect x="1" y="7" width="2" height="3" fill="#D4692A"/>
+        <rect x="1" y="10" width="1" height="1" fill="#D4692A"/>
+        <rect x="4" y="7" width="2" height="3" fill="#D4692A"/>
+        <rect x="5" y="10" width="1" height="1" fill="#D4692A"/>
+        <rect x="7" y="7" width="2" height="3" fill="#D4692A"/>
+        <rect x="7" y="10" width="1" height="1" fill="#D4692A"/>
+        <rect x="3" y="2" width="4" height="2" fill="#E8834A" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="hand" id="claude-hand">✊</div>
+    <div class="label">Claude</div>
+  </div>
+</div>
+
+<div id="result">手を選んでね！</div>
+<div id="buttons">
+  <button class="choice-btn" data-v="r" title="グー">✊</button>
+  <button class="choice-btn" data-v="s" title="チョキ">✌️</button>
+  <button class="choice-btn" data-v="p" title="パー">🖐️</button>
+</div>
+<div id="streak"></div>
+<div id="history"></div>
+
+<script>
+const HANDS = { r:'✊', s:'✌️', p:'🖐️' };
+const NAMES = { r:'グー', s:'チョキ', p:'パー' };
+let wins=0, loses=0, draws=0, streak=0, bestStreak=0;
+
+function judge(me, cpu) {
+  if(me===cpu) return 'draw';
+  if((me==='r'&&cpu==='s')||(me==='s'&&cpu==='p')||(me==='p'&&cpu==='r')) return 'win';
+  return 'lose';
+}
+
+function addHistory(res) {
+  const el = document.createElement('div');
+  el.className = `hist ${res}`;
+  el.textContent = res==='win'?'勝':res==='lose'?'負':'引';
+  document.getElementById('history').prepend(el);
+  if(document.getElementById('history').children.length > 12)
+    document.getElementById('history').lastChild.remove();
+}
+
+document.querySelectorAll('.choice-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const me = btn.dataset.v;
+    const cpu = ['r','s','p'][Math.floor(Math.random()*3)];
+    const res = judge(me, cpu);
+    document.getElementById('my-hand').textContent = HANDS[me];
+    document.getElementById('claude-hand').textContent = HANDS[cpu];
+
+    if(res==='win') {
+      wins++; streak++;
+      if(streak>bestStreak) bestStreak=streak;
+      document.getElementById('result').textContent = '🎉 あなたの勝ち！';
+      document.getElementById('result').style.color = '#4ade80';
+      document.getElementById('streak').textContent = `🔥 ${streak}連勝中！（最高: ${bestStreak}）`;
+    } else if(res==='lose') {
+      loses++; streak=0;
+      document.getElementById('result').textContent = '😢 Claudeの勝ち…';
+      document.getElementById('result').style.color = '#f87171';
+      document.getElementById('streak').textContent = '';
+    } else {
+      draws++;
+      document.getElementById('result').textContent = '🤝 引き分け';
+      document.getElementById('result').style.color = '#f9c74f';
+    }
+    document.getElementById('w').textContent = wins;
+    document.getElementById('l').textContent = loses;
+    document.getElementById('d').textContent = draws;
+    document.getElementById('streak').textContent = streak > 1
+      ? `🔥 ${streak}連勝中！（最高: ${bestStreak}）`
+      : streak===1 ? `1勝（最高: ${bestStreak}連勝）` : '';
+    addHistory(res);
+  });
+});
+</script>
+</body>
+</html>
